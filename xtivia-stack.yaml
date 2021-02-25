@@ -1,0 +1,174 @@
+---
+Resources:
+  Jenkins:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: us-east-1a
+      ImageId: ami-02aa7f3de34db391a 
+      InstanceType: t2.micro
+      SecurityGroups:
+        - !Ref SSHSecurityGroup
+        - !Ref ServerSecurityGroup
+      KeyName: keypair01.pem
+     UserData:
+       Fn::Base64: |
+          #!/bin/bash
+          sudo apt install -y unzip wget
+          #Install JAVA
+          
+          #sudo add-apt-repository ppa:webupd8team/java
+          #sudo apt-get update
+          #apt-get install -y oracle-java8-installer
+          
+          sudo add-apt-repository ppa:openjdk-r/ppa
+          sudo apt-get update
+          sudo apt-get install -y openjdk-8-jdk
+          
+          #Install Jenkins
+          
+          wget -q -O - https://pkg.jenkins.io/debian/jenkins-ci.org.key | sudo apt-key add -
+          echo deb https://pkg.jenkins.io/debian-stable binary/ | sudo tee /etc/apt/sources.list.d/jenkins.list
+          sudo apt-get update
+          sudo apt-get install -y jenkins
+          sudo systemctl start jenkins
+          
+          #Install Maven  ( on Jenkins machine )
+          
+          ## cd /tmp ; wget http://mirrors.estointernet.in/apache/maven/maven-3/3.6.1/binaries/apache-maven-3.6.1-bin.tar.gz
+          ## cd /tmp ; wget http://apachemirror.wuchna.com/maven/maven-3/3.6.2/binaries/apache-maven-3.6.2-bin.tar.gz
+          cd /tmp ; wget http://apachemirror.wuchna.com/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.tar.gz
+          cd /tmp ; tar -xzf apache-maven-3.6.3-bin.tar.gz -C /opt
+           
+  Master:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: us-east-1a
+      ImageId: ami-02aa7f3de34db391a
+      InstanceType: t2.micro
+      SecurityGroups:
+        - !Ref SSHSecurityGroup
+        - !Ref ServerSecurityGroup
+      KeyName: keypair01.pem
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          sudo apt-get update
+          sudo apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common
+          ## Add Dockers official GPG key
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+          sudo apt-get update ; clear
+          echo "Available Docker Version for Install"
+          echo " "
+          apt-cache madison docker-ce | awk '{print $3}'
+          echo " "
+          #read -p 'Enter Required Version: ' version
+          version="5:18.09.8~3-0~ubuntu-bionic"
+          sudo apt-get install -y docker-ce=$version docker-ce-cli=$version containerd.io --allow-downgrades
+          if [ $? -eq 0 ];then
+               echo "docker-ce-$version is successfully installed"
+          else
+               echo "issue with docker-ce installation - process abort"
+               exit 1
+          fi
+          sudo service docker start ; clear
+          echo " "
+          #### Install Kubernetes latest components
+          echo "starting the installation of k8s components (kubeadm,kubelet,kubectl) ...."
+          echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+          curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+          sudo apt-get update ; clear
+          sudo apt-get install -y kubelet kubeadm kubectl
+          if [ $? -eq 0 ];then
+               echo "kubelet, kubeadm & kubectl are successfully installed"
+          else
+               echo "issue in installing kubelet, kubeadm & kubectl - process abort"
+               exit 2
+          fi
+          sudo apt-mark hold kubelet kubeadm kubectl docker-ce docker-ce-cli
+          echo " "
+            
+  
+  Worker:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: us-east-1a
+      ImageId: ami-02aa7f3de34db391a
+      InstanceType: t2.micro
+      SecurityGroups:
+        - !Ref SSHSecurityGroup
+        - !Ref ServerSecurityGroup
+      KeyName: keypair01.pem
+      UserData: |
+        Fn::Base64: |
+          #!/bin/bash
+          
+          sudo apt install -y unzip wget
+          
+          #### Install Specific Docker version
+          sudo apt-get update
+          sudo apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common 
+          ## Add Dockers official GPG key
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+          sudo apt-get update ; clear
+          echo "Available Docker Version for Install"
+          echo " "
+          apt-cache madison docker-ce | awk '{print $3}'
+          echo " "
+          #read -p 'Enter Required Version: ' version
+          version="5:18.09.8~3-0~ubuntu-bionic"
+          sudo apt-get install -y docker-ce=$version docker-ce-cli=$version containerd.io --allow-downgrades
+          if [ $? -eq 0 ];then
+               echo "docker-ce-$version is successfully installed"
+          else
+               echo "issue with docker-ce installation - process abort"
+               exit 1
+          fi
+          sudo service docker start ; clear
+          echo " "
+          #### Install Kubernetes latest components
+          echo "starting the installation of k8s components (kubeadm,kubelet,kubectl) ...."
+          echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+          curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+          sudo apt-get update ; clear
+          sudo apt-get install -y kubelet kubeadm
+          if [ $? -eq 0 ];then
+               echo "kubelet, kubeadm are successfully installed"
+          else
+               echo "issue in installing kubelet, kubeadm - process abort"
+               exit 2
+          fi
+          sudo apt-mark hold kubelet kubeadm docker-ce docker-ce-cli
+          echo " "  
+          
+  SSHSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable SSH access via port 22
+      SecurityGroupIngress:
+      - CidrIp: 0.0.0.0/0
+        FromPort: 22
+        IpProtocol: tcp
+        ToPort: 22
+
+  ServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: allow connections to jenkins server
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 8080
+        ToPort: 8080
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 0.0.0.0/0
+  ECR:
+    Type: AWS::ECR::Repository
+    Properties:
+    RepositoryName: xtivia
+
+
+
