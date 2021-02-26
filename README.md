@@ -31,3 +31,6 @@ When the new image is successfully pushed to dockerhub, the deploy job is trigge
 
 ansible-playbook playbook.yaml"
 
+I was unable to deploy to the kubernetes cluster because of an error {Error: Cannot perform an interactive login from a non TTY device}
+So the new image could not be deployed to the cluster. I tried to debug this but I ran out of time. So I just decided to submit. However, I'll keep debugging.
+
