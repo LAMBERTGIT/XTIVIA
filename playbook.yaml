@@ -1,0 +1,13 @@
+---
+- hosts: 172.31.1.214
+  become: yes
+  gather_facts: no
+  tasks:
+  - name: Copy file to cluster
+    copy:
+      src: deploy.yaml
+      dest: /deploy.yaml
+  - name: Deploy to cluster
+    shell:
+      cmd: kubectl apply -f /deploy.yaml
+
