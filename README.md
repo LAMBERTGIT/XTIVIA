@@ -20,6 +20,9 @@ I had difficulties joining the worker node to the master node, primarily because
 
 I configured the jenkins package job to build the docker image and push it to ECR, then a deploy job which would run an ansible playbook to deploy this code to the kubernetes cluster.
 The command to build the docker image and push is as follows:
+
+
+
 "aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 933175508845.dkr.ecr.us-east-1.amazonaws.com
 docker build -t xt-xtiviarepo-gsgyxdvivpzw .
 docker tag xt-xtiviarepo-gsgyxdvivpzw:latest 933175508845.dkr.ecr.us-east-1.amazonaws.com/xt-xtiviarepo-gsgyxdvivpzw:latest
